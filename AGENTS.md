@@ -8,6 +8,7 @@ Java 17, Maven, TestNG, Playwright for Java (UI and API), AssertJ, Allure.
 
 ## Layout
 - `src/test/java/dev/qa/pages`: page objects. Locators and actions only, no assertions.
+- `src/test/java/dev/qa/clients`: API clients (REST-Assured). Requests only, no assertions, immutable so they are safe to share between threads.
 - `src/test/java/dev/qa/tests/ui|api`: tests. Assertions live here.
 - `src/test/java/dev/qa/core/BaseUiTest.java`: browser lifecycle. Browser objects are held in ThreadLocals (TestNG runs methods of one class in parallel). Do not add other static shared state, and do not store `page` in a plain instance field.
 

@@ -16,6 +16,7 @@
     <allure.version>2.29.0</allure.version>
     <aspectj.version>1.9.22</aspectj.version>
     <assertj.version>3.26.3</assertj.version>
+    <restassured.version>5.5.0</restassured.version>
   </properties>
 
   <dependencies>
@@ -53,6 +54,18 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
       <version>1.7.36</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${restassured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.qameta.allure</groupId>
+      <artifactId>allure-rest-assured</artifactId>
+      <version>${allure.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

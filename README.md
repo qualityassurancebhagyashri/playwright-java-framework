@@ -16,7 +16,7 @@ It targets two public demo systems, so anyone can clone and run it:
 | --- | --- |
 | Framework design | Page objects (locators and actions only), tests hold the assertions, central `Config` |
 | Parallel safe | A fresh Playwright, browser and context per test method, held in `ThreadLocal`s; TestNG runs methods in parallel |
-| UI and API in one stack | API tests use Playwright's request client, assertions with AssertJ |
+| UI and API in one stack | API tests with both Playwright's request client (AssertJ) and REST-Assured (Hamcrest); REST-Assured calls are attached to Allure |
 | Reporting | Allure with `@Epic/@Feature/@Story/@Step`; a screenshot and a Playwright trace are attached when a test fails |
 | CI | GitHub Actions: tests, Allure report published to GitHub Pages, traces uploaded on failure, Playwright browsers cached |
 | Flaky tests | The `quarantine` TestNG group is excluded from the main run and runs in a separate non-blocking job on `main` |
@@ -91,7 +91,7 @@ PR opened (touches src/test)
 
 | Part | State |
 | --- | --- |
-| Tests (3 login, 1 cart, 3 API) | Passing locally and in CI |
+| Tests (3 login, 1 cart, 3 API with Playwright, 6 API with REST-Assured) | Passing locally and in CI |
 | CI, Allure report on GitHub Pages | Working |
 | Rule-based precheck comment on PRs | Working: flags problems and updates in place once they are fixed |
 | AI review step | Wired up but **not yet run in CI**; it needs the `ANTHROPIC_API_KEY` secret. Until then it is skipped. Its tool permissions and argument handling are unproven until the first run |
@@ -111,6 +111,7 @@ src/test/java/dev/qa/
   core/BaseUiTest.java     thread-local browser lifecycle, failure evidence
   core/BaseApiTest.java    thread-local API client
   pages/                   page objects
+  clients/                 API clients (REST-Assured), requests only, no assertions
   tests/ui, tests/api      tests
 .claude/skills/test-review/SKILL.md   the AI review skill
 scripts/test_review_precheck.py       rule-based precheck
