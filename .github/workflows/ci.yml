@@ -3,7 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md"]
   pull_request:
+    paths-ignore: ["**.md"]
   workflow_dispatch:
 
 permissions:
@@ -26,11 +28,25 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Install Playwright browser
-        run: mvn -q test-compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.classpathScope=test -Dexec.args="install --with-deps chromium"
+      # The browser download is cached. System packages (apt) are not, so on a cache hit
+      # we still run install-deps, which is much quicker than a full install.
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+
+      - name: Install Playwright browser (cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: mvn -B -ntp -q test-compile exec:java "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.classpathScope=test" "-Dexec.args=install --with-deps chromium"
+
+      - name: Install OS dependencies only (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: mvn -B -ntp -q test-compile exec:java "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.classpathScope=test" "-Dexec.args=install-deps chromium"
 
       - name: Run tests (quarantine excluded)
-        run: mvn -B test
+        run: mvn -B -ntp test
 
       - name: Build Allure report
         if: always()
@@ -71,7 +87,9 @@ jobs:
         uses: actions/deploy-pages@v4
 
   # Flaky tests in the TestNG group "quarantine". Never blocks the build.
+  # Runs on main only, so pull requests do not pay for a second browser setup.
   quarantine:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 15
@@ -79,5 +97,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17", cache: maven }
-      - run: mvn -q test-compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.classpathScope=test -Dexec.args="install --with-deps chromium"
-      - run: mvn -B test -Dgroups=quarantine -DexcludedGroups=none -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: mvn -B -ntp -q test-compile exec:java "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.classpathScope=test" "-Dexec.args=install --with-deps chromium"
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: mvn -B -ntp -q test-compile exec:java "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.classpathScope=test" "-Dexec.args=install-deps chromium"
+      - run: mvn -B -ntp test -Dgroups=quarantine -DexcludedGroups=none -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
