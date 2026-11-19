@@ -7,7 +7,8 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write   # only to post the comment
+  pull-requests: write   # post the comments
+  id-token: write        # required by claude-code-action for its default GitHub App authentication
 
 jobs:
   review:
@@ -17,7 +18,7 @@ jobs:
     env:
       HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -42,13 +43,34 @@ jobs:
             else await github.rest.issues.createComment({ owner, repo, issue_number, body });
 
       # AI step. Needs the ANTHROPIC_API_KEY repo secret. Fork PRs do not get secrets, so this is skipped there.
-      # Check the action's current inputs in its README before relying on this block.
+      # The model can only read the repo and write review.md. It gets no GitHub write access and no network tools:
+      # the next step posts the file. Input names checked against code.claude.com/docs/en/github-actions.
       - name: AI review using the test-review skill
+        id: ai
         if: ${{ env.HAS_KEY == 'true' }}
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            Use the test-review skill (.claude/skills/test-review/SKILL.md) on this pull request's changes under src/test.
-            Rules are in AGENTS.md. The rule-based precheck is in precheck.md, do not repeat it.
-            Post one comment in the format the skill defines. Advisory only. Do not modify files.
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --max-turns 10
+            --allowedTools "Read,Glob,Grep,Write,Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+          prompt: "/test-review Write the review to review.md in the repo root and do not post anything yourself. Diff base: origin/${{ github.base_ref }}. Rule-based precheck output is in precheck.md."
+
+      - name: Post AI review as PR comment
+        if: ${{ always() && env.HAS_KEY == 'true' && hashFiles('review.md') != '' }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- ai-test-review -->';
+            let text = fs.readFileSync('review.md', 'utf8').trim();
+            if (text.length > 20000) text = text.slice(0, 20000) + '\n\n_(truncated)_';
+            const body = marker + '\n' + text;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
