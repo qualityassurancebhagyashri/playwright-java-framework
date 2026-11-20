@@ -114,6 +114,7 @@ src/test/java/dev/qa/
   clients/                 API clients (REST-Assured), requests only, no assertions
   tests/ui, tests/api      tests
 .claude/skills/test-review/SKILL.md   the AI review skill
+.mcp.json                             project MCP config: Atlassian (Jira) server, sign-in via OAuth, no secrets in the repo
 scripts/test_review_precheck.py       rule-based precheck
 AGENTS.md                             rules for people and AI assistants
 .github/workflows/ci.yml              tests, report, quarantine
