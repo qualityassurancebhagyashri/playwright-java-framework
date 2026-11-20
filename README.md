@@ -19,6 +19,8 @@ It targets two public demo systems, so anyone can clone and run it:
 | UI and API in one stack | API tests with both Playwright's request client (AssertJ) and REST-Assured (Hamcrest); REST-Assured calls are attached to Allure |
 | Reporting | Allure with `@Epic/@Feature/@Story/@Step`; a screenshot and a Playwright trace are attached when a test fails |
 | CI | GitHub Actions: tests, Allure report published to GitHub Pages, traces uploaded on failure, Playwright browsers cached |
+| Selenium WebDriver on a Grid | Selenium page objects and tests that run locally or on a Selenium Grid (hub, Chrome and Firefox nodes in Docker), one browser session per parallel thread. See [docs/selenium-grid.md](docs/selenium-grid.md) |
+| Jenkins | A declarative `Jenkinsfile` with a Docker build agent, parameters, JUnit and Allure reporting and a non-blocking quarantine stage. See [docs/jenkins.md](docs/jenkins.md) |
 | Flaky tests | The `quarantine` TestNG group is excluded from the main run and runs in a separate non-blocking job on `main` |
 | AI in the workflow | `AGENTS.md` rules, a `test-review` skill, a rule-based precheck and an optional AI review, all advisory |
 
@@ -57,6 +59,8 @@ npx --yes allure-commandline@2.29.0 serve target/allure-results
 | --- | --- | --- |
 | `ci.yml`, job `tests` | Push to `main`, pull requests | Runs the tests (the merge gate), builds the Allure report, uploads it as an artifact |
 | `ci.yml`, job `deploy-report` | Push to `main` | Publishes the report to GitHub Pages |
+| `ci.yml`, job `selenium-grid` | Push to `main`, pull requests | Starts a Selenium Grid in Docker and runs the Selenium tests on Chrome and Firefox; also tries Playwright through the Grid (experimental) |
+| `jenkins-checks.yml` | Changes to the `Jenkinsfile`, agent Dockerfile or pom | Builds the Jenkins agent image, runs the tests inside it as a non-root user, and validates the `Jenkinsfile` with a real Jenkins linter |
 | `ci.yml`, job `quarantine` | Push to `main` only | Runs tests tagged `quarantine`; never blocks anything |
 | `ai-review.yml` | Pull requests that change `src/test/**` | Advisory review comments (see below) |
 
@@ -91,9 +95,12 @@ PR opened (touches src/test)
 
 | Part | State |
 | --- | --- |
-| Tests (3 login, 1 cart, 3 API with Playwright, 6 API with REST-Assured) | Passing locally and in CI |
+| Tests (3 login, 1 cart, 3 API with Playwright, 6 API with REST-Assured, 4 Selenium) | Passing locally and in CI |
 | CI, Allure report on GitHub Pages | Working |
 | Rule-based precheck comment on PRs | Working: flags problems and updates in place once they are fixed |
+| Selenium tests on a Selenium Grid (Chrome and Firefox) | Passing in CI against a Grid started with Docker |
+| Playwright through the Grid (`SELENIUM_REMOTE_URL`) | Passing in CI for the login tests. Playwright documents this as experimental and Chrome/Edge only |
+| Jenkins pipeline | The `Jenkinsfile` passes Jenkins' own linter, and the agent image runs the full suite in CI. **Not yet run on a real Jenkins server** |
 | AI review step | Wired up but **not yet run in CI**; it needs the `ANTHROPIC_API_KEY` secret. Until then it is skipped. Its tool permissions and argument handling are unproven until the first run |
 
 ## Set it up in your own repo
@@ -112,8 +119,15 @@ src/test/java/dev/qa/
   core/BaseApiTest.java    thread-local API client
   pages/                   page objects
   clients/                 API clients (REST-Assured), requests only, no assertions
-  tests/ui, tests/api      tests
+  pages/selenium/          Selenium page objects
+  core/DriverFactory.java  local or remote (Grid) WebDriver
+  core/BaseSeleniumTest    thread-local WebDriver lifecycle
+  tests/ui, tests/api, tests/selenium   tests
 .claude/skills/test-review/SKILL.md   the AI review skill
+Jenkinsfile                           Jenkins pipeline
+docker/Dockerfile.agent               Jenkins build agent (JDK 17, Maven, Chromium)
+docker/selenium-grid/docker-compose.yml   local Selenium Grid
+docs/                                 Jenkins and Selenium Grid explained
 .mcp.json                             project MCP config: Atlassian (Jira) server, sign-in via OAuth, no secrets in the repo
 scripts/test_review_precheck.py       rule-based precheck
 AGENTS.md                             rules for people and AI assistants
