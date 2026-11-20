@@ -1,0 +1,71 @@
+name: Jenkins checks
+
+# Verifies the Jenkins pieces without a permanent Jenkins server:
+#  1. the agent image builds, and the tests run inside it as a non-root user, the way Jenkins runs them
+#  2. the Jenkinsfile is accepted by Jenkins' own declarative pipeline linter
+on:
+  push:
+    branches: [main]
+    paths: ["Jenkinsfile", "docker/Dockerfile.agent", "pom.xml", ".github/workflows/jenkins-checks.yml"]
+  pull_request:
+    paths: ["Jenkinsfile", "docker/Dockerfile.agent", "pom.xml", ".github/workflows/jenkins-checks.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  agent-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build the agent image
+        run: docker build -f docker/Dockerfile.agent -t qa-agent .
+
+      # Same flags Jenkins uses: non-root user, HOME pointing at the workspace, --ipc=host and --init.
+      - name: Run the tests inside the image as a non-root user
+        run: |
+          docker run --rm --ipc=host --init \
+            -u "$(id -u):$(id -g)" \
+            -e HOME=/work \
+            -v "$PWD":/work -w /work \
+            qa-agent mvn -B -ntp test
+
+  lint-jenkinsfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Start Jenkins with the pipeline plugins
+        run: |
+          mkdir -p /tmp/jenkins-lint
+          cat > /tmp/jenkins-lint/Dockerfile <<'DOCKER'
+          FROM jenkins/jenkins:lts-jdk17
+          RUN jenkins-plugin-cli --plugins workflow-aggregator docker-workflow timestamper junit allure-jenkins-plugin
+          ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+          DOCKER
+          docker build -t jenkins-lint /tmp/jenkins-lint
+          docker run -d --name jenkins-lint -p 8080:8080 jenkins-lint
+
+      - name: Wait for Jenkins
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/json || true)
+            if [ "$code" = "200" ]; then echo "Jenkins is up"; exit 0; fi
+            sleep 3
+          done
+          docker logs jenkins-lint | tail -50
+          exit 1
+
+      - name: Validate the Jenkinsfile
+        run: |
+          RESP=$(curl -s -X POST -F "jenkinsfile=<Jenkinsfile" http://localhost:8080/pipeline-model-converter/validate)
+          echo "$RESP"
+          echo "$RESP" | grep -q "successfully validated"
+
+      - name: Jenkins logs
+        if: failure()
+        run: docker logs jenkins-lint | tail -80
