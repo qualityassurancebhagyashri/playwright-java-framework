@@ -122,13 +122,18 @@ jobs:
         run: mvn -B -ntp test -Dgroups=selenium -DexcludedGroups=quarantine -DgridUrl=http://localhost:4444 -Dbrowser=${{ matrix.browser }}
 
       # Playwright can use the same Grid through SELENIUM_REMOTE_URL (Chrome and Edge only).
-      # Playwright documents this as experimental, so it never fails the build.
+      # Playwright documents this as experimental, so it never fails the build. The result is written
+      # to the job summary, so a failure is visible and not hidden behind a green tick.
       - name: Playwright through the Grid (experimental, Chrome only)
         if: matrix.browser == 'chrome'
-        continue-on-error: true
         env:
           SELENIUM_REMOTE_URL: http://localhost:4444
-        run: mvn -B -ntp test -Dtest=LoginTest -Dgroups=smoke -DexcludedGroups=quarantine,selenium
+        run: |
+          if mvn -B -ntp test -Dtest=LoginTest -Dgroups=smoke -DexcludedGroups=quarantine,selenium; then
+            echo "Playwright through the Grid: PASSED (experimental)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Playwright through the Grid: FAILED (experimental, does not fail the build)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Grid logs
         if: failure()

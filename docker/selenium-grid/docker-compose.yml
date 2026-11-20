@@ -18,6 +18,9 @@ services:
     depends_on:
       - selenium-hub
     environment:
+      # The address clients should use to reach the Grid. Without it the node advertises its internal
+      # Docker IP, and anything that talks to the node directly (Playwright over CDP) cannot connect.
+      - SE_NODE_GRID_URL=${GRID_PUBLIC_URL:-http://localhost:4444}
       - SE_EVENT_BUS_HOST=selenium-hub
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
