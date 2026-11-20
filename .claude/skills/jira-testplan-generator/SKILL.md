@@ -266,3 +266,41 @@ Use it when:
 Never confuse defect severity with test execution priority.
 
 ### Reference Usage
+
+Load reference files on demand, not all at once. Read the template when you are about to write the plan, and each of the others at the stage named above. Use them to guide the work. Do not copy their text into the output.
+
+## 9. Jira Access (read-only)
+
+- Use only the Jira tools provided by the connected Atlassian MCP server, and only to read: get an issue, search with JQL, read comments and links.
+- Never create, edit, transition, assign, comment on, or delete anything in Jira or Confluence. If the user asks for that, say it is outside this skill and ask for explicit approval first.
+- If the Jira tools are missing, not signed in, or return a permission error, say so plainly and ask the user to paste the ticket details. Do not guess ticket content.
+- Fetch only what the scope needs: the requested issue, or the Epic and its children. Prefer JQL on issue keys over broad project searches.
+- Never print tokens, session details, or authentication error text that may contain secrets.
+
+## 10. Workflow
+
+1. Confirm the scope. If the input is a project key or an Epic with more than about 15 issues, list the issues you would include and ask which to use.
+2. Fetch the requirements read-only (section 9).
+3. State the requirement gaps and open questions first, briefly. Continue with clearly labelled assumptions, unless the gaps make meaningful scenarios impossible. In that case stop and ask.
+4. Read `references/test-plan-template.md`, design the scenarios, and prioritize them (sections 6 and 7).
+5. Map the scenarios to the existing automation (section 11).
+6. Check the draft against the final checklist in `references/qa-testing-guidelines.md` (section 14).
+7. Save the draft and summarise it (section 12).
+
+## 11. Map Scenarios to Existing Automation
+
+- Search `src/test/java` for related tests: by `@Epic`, `@Feature` and `@Story` values, test descriptions, and the page objects and API clients involved.
+- Add an **Automation** column to the scenario table and to the traceability matrix, with one of:
+  - `Covered: ClassName#method`, only when that test's assertions actually check the scenario's expected result. A test name alone is not evidence.
+  - `Candidate: UI` or `Candidate: API`, when it could be automated with the existing page objects or clients.
+  - `Manual only`, with a one-line reason.
+- Do not write test code in this skill. Automating approved scenarios follows the Implementation Rules in `AGENTS.md`.
+- Do not claim that any test passes unless it was executed and the result was observed.
+
+## 12. Output
+
+- Follow `references/test-plan-template.md`.
+- Save the draft to `docs/test-plans/<ISSUE-KEY>.md` (use the Epic key for several issues), creating the folder if needed. If the user asked for the answer in chat only, reply in chat instead.
+- Mark the document status as `Draft, not reviewed`.
+- Do not commit, push, or publish the plan, and do not post it to Jira or Confluence, unless the user explicitly asks.
+- End the reply with the scenario count by priority, the number of open questions, and which items need stakeholder input.

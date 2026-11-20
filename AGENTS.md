@@ -181,4 +181,11 @@ Expiry passed with no fix: delete the test or fix it. Do not extend silently.
 - Do not claim tests have passed unless they were actually executed and the results were observed.
 - Do not invent test data, expected results, application behaviour, or requirement coverage.
 - Do not publish test plans, modify Jira issues, transition tickets, or create external records without explicit user approval.
-- Do not expose credentials, tokens, or sensitive test data in generated documents
+- Do not expose credentials, tokens, or sensitive test data in generated documents.
+
+## Commands
+
+- All default tests: `mvn test`
+- One TestNG group: `mvn test -Dgroups=smoke`
+- Headed: `mvn test -Dheadless=false`
+- Report: `npx allure-commandline serve target/allure-results`
