@@ -11,8 +11,10 @@ Java 17, Maven, TestNG, Playwright for Java (UI and API), AssertJ, Allure.
 ## Layout
 
 - `src/test/java/dev/qa/pages`: page objects. Locators and actions only, no assertions.
+- `src/test/java/dev/qa/pages/selenium`: Selenium page objects. Actions and reads only, no assertions. Explicit `WebDriverWait`, never implicit waits.
 - `src/test/java/dev/qa/clients`: API clients (REST-Assured). Requests only, no assertions, immutable so they are safe to share between threads.
 - `src/test/java/dev/qa/tests/ui|api`: tests. Assertions live here.
+- `src/test/java/dev/qa/core/BaseSeleniumTest.java` and `DriverFactory.java`: Selenium lifecycle. The driver is a ThreadLocal, runs locally or on a Selenium Grid (`-DgridUrl`), and is always quit so the Grid session is released.
 - `src/test/java/dev/qa/core/BaseUiTest.java`: browser lifecycle. Browser objects are held in ThreadLocals (TestNG runs methods of one class in parallel). Do not add other static shared state, and do not store `page` in a plain instance field.
 
 ## Rules for new or changed tests
@@ -23,7 +25,7 @@ Java 17, Maven, TestNG, Playwright for Java (UI and API), AssertJ, Allure.
 4. Every test must assert an outcome. A test that only clicks is a bug.
 5. No credentials in code. Read them from `Config` (env vars or system properties).
 6. Tests must be independent and parallel safe: no `dependsOnMethods`, no ordering, no shared mutable fields (the class instance is shared between threads).
-7. Put every test in a group: `smoke`, `regression`, or `quarantine` (see below). Add Allure `@Epic/@Feature/@Story`.
+7. Put every test in a group: `smoke`, `regression`, `selenium` (Selenium WebDriver tests, excluded from the default run), or `quarantine` (see below). Add Allure `@Epic/@Feature/@Story`.
 8. Page objects return page objects or Locators. They never call `assertThat`.
 
 ## QA Engineering Principles
@@ -188,4 +190,6 @@ Expiry passed with no fix: delete the test or fix it. Do not extend silently.
 - All default tests: `mvn test`
 - One TestNG group: `mvn test -Dgroups=smoke`
 - Headed: `mvn test -Dheadless=false`
+- Selenium tests, local browser: `mvn test -Dgroups=selenium`
+- Selenium tests on a Grid: `mvn test -Dgroups=selenium -DgridUrl=http://localhost:4444 -Dbrowser=firefox`
 - Report: `npx allure-commandline serve target/allure-results`

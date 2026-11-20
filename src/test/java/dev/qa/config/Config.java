@@ -12,6 +12,16 @@ public final class Config {
         return get("apiBaseUrl", "API_BASE_URL", "https://jsonplaceholder.typicode.com");
     }
 
+    /** Selenium Grid hub URL, for example http://localhost:4444. Empty means run the browser locally. */
+    public static String gridUrl() {
+        return get("gridUrl", "GRID_URL", "");
+    }
+
+    /** Browser for the Selenium tests: chrome or firefox. */
+    public static String browser() {
+        return get("browser", "BROWSER", "chrome").toLowerCase();
+    }
+
     public static boolean headless() {
         return Boolean.parseBoolean(get("headless", "HEADLESS", "true"));
     }

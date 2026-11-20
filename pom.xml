@@ -17,6 +17,7 @@
     <aspectj.version>1.9.22</aspectj.version>
     <assertj.version>3.26.3</assertj.version>
     <restassured.version>5.5.0</restassured.version>
+    <selenium.version>4.25.0</selenium.version>
   </properties>
 
   <dependencies>
@@ -68,6 +69,12 @@
       <version>${allure.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.seleniumhq.selenium</groupId>
+      <artifactId>selenium-java</artifactId>
+      <version>${selenium.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -83,6 +90,8 @@
             <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
             <baseUrl>${baseUrl}</baseUrl>
             <headless>${headless}</headless>
+            <gridUrl>${gridUrl}</gridUrl>
+            <browser>${browser}</browser>
           </systemPropertyVariables>
           <!-- TestNG parallel: methods run concurrently, each on its own thread -->
           <parallel>methods</parallel>
@@ -109,8 +118,10 @@
       <properties>
         <baseUrl>https://www.saucedemo.com</baseUrl>
         <headless>true</headless>
+        <gridUrl></gridUrl>
+        <browser>chrome</browser>
         <parallelism>3</parallelism>
-        <excludedGroups>quarantine</excludedGroups>
+        <excludedGroups>quarantine,selenium</excludedGroups>
       </properties>
     </profile>
   </profiles>

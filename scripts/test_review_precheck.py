@@ -15,6 +15,7 @@ RULES = [
     (r"locator\(\s*\"(//|xpath=/)", "medium", "Absolute XPath locator. Prefer role, label or data-test."),
     (r"(password|passwd|secret|token|apikey)\s*=\s*\"[^\"]{4,}\"", "high", "Possible hard-coded secret. Read it from Config or env."),
     (r"enabled\s*=\s*false|@Disabled", "medium", "Test disabled. Use the quarantine group with ticket, owner and expiry instead."),
+    (r"implicitlyWait\(", "medium", "Implicit wait. Use explicit WebDriverWait conditions instead."),
     (r"dependsOnMethods|dependsOnGroups", "medium", "Test depends on another test. Tests must be independent."),
     (r"System\.out\.print", "low", "System.out in a test. Use Allure steps or logging."),
     (r"static\s+(?!final)[A-Za-z<>\[\], ]+\s+\w+\s*;", "medium", "Static mutable field. Breaks parallel runs."),

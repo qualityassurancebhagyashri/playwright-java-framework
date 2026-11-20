@@ -87,6 +87,64 @@ jobs:
         uses: actions/deploy-pages@v4
 
   # Flaky tests in the TestNG group "quarantine". Never blocks the build.
+  # Selenium tests on a real Selenium Grid: a hub plus Chrome and Firefox nodes, started with Docker.
+  selenium-grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Start Selenium Grid
+        run: docker compose -f docker/selenium-grid/docker-compose.yml up -d
+
+      - name: Wait for the Grid to be ready
+        run: |
+          for i in $(seq 1 45); do
+            if curl -sf http://localhost:4444/status | grep -Eq '"ready": *true'; then
+              echo "Grid ready"; curl -s http://localhost:4444/status | head -c 800; echo; exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker/selenium-grid/docker-compose.yml logs
+          exit 1
+
+      - name: Run Selenium tests on the Grid (${{ matrix.browser }})
+        run: mvn -B -ntp test -Dgroups=selenium -DexcludedGroups=quarantine -DgridUrl=http://localhost:4444 -Dbrowser=${{ matrix.browser }}
+
+      # Playwright can use the same Grid through SELENIUM_REMOTE_URL (Chrome and Edge only).
+      # Playwright documents this as experimental, so it never fails the build.
+      - name: Playwright through the Grid (experimental, Chrome only)
+        if: matrix.browser == 'chrome'
+        continue-on-error: true
+        env:
+          SELENIUM_REMOTE_URL: http://localhost:4444
+        run: mvn -B -ntp test -Dtest=LoginTest -Dgroups=smoke -DexcludedGroups=quarantine,selenium
+
+      - name: Grid logs
+        if: failure()
+        run: docker compose -f docker/selenium-grid/docker-compose.yml logs --tail 200
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: allure-results-selenium-${{ matrix.browser }}
+          path: target/allure-results
+          if-no-files-found: ignore
+
+      - name: Stop Selenium Grid
+        if: always()
+        run: docker compose -f docker/selenium-grid/docker-compose.yml down
+
   # Runs on main only, so pull requests do not pay for a second browser setup.
   quarantine:
     if: github.ref == 'refs/heads/main'
